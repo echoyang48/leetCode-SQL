@@ -762,6 +762,17 @@ SELECT (
     LIMIT 1 OFFSET 1 ) AS "SecondHighestSalary"
 """
 
+# 176 Echo
+# Exclude the Max,then find the max in the remaining dataset
+"""
+Select Max(Salary) as 'SecondHighestSalary' 
+from Employee 
+Where Salary not in (Select Max(Salary) from Employee) 
+"""
+
+
+
+
 # 1142
 # pay attention to the window case, the length of the windows
 """
