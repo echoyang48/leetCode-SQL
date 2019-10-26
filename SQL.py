@@ -792,7 +792,11 @@ LEFT JOIN (SELECT MIN(p2.Id) AS 'Id', p2.Email
 ON p.Id = group_email.Id
 WHERE group_email.Email IS NULL
 """
-
+# 196 Echo
+"""
+DELETE FROM Person WHERE Id NOT IN 
+(SELECT * FROM (SELECT MIN(Id) FROM Person GROUP By Email)as A)
+"""
 
 # 197
 """
@@ -802,6 +806,15 @@ LEFT JOIN Weather w2
 ON DATE_SUB(w.RecordDate, INTERVAL 1 DAY) = w2.RecordDate
 WHERE w.Temperature > w2.Temperature
 """
+# 197 Echo
+"""
+SELECT A.Id
+From Weather A Left Join  
+Weather B
+On subdate(A.RecordDate,1) = B.RecordDate
+Where A.Temperature > B.Temperature
+"""
+
 
 # 596
 """
@@ -811,6 +824,14 @@ FROM (
     FROM courses c
     GROUP BY c.class
     HAVING num_stu >= 5) stu_count
+"""
+
+# 596 Echo
+"""
+SELECT class
+FROM courses
+GROUP BY class
+HAVING count(distinct student) >= 5
 """
 
 # 619
@@ -951,6 +972,16 @@ WHERE (a.player_id, a.event_date) IN (
     GROUP BY a2.player_id)
 """
 
+# 512 Echo
+"""
+SELECT A.player_id,A.device_id
+FROM Activity A 
+INNER JOIN (SELECT player_id,MIN(event_date) as event_date_1 
+            FROM Activity Group By player_id) AS B
+ON A.player_id = B.player_id and A.event_date = B.event_date_1
+
+"""
+
 # 182
 """
 SELECT DISTINCT p1.Email
@@ -965,6 +996,17 @@ SELECT p1.Email
 FROM Person p1
 GROUP BY p1.Email
 HAVING COUNT(p1.Id) > 1
+"""
+
+# 182 Echo
+# using group by and where
+"""
+Select Email
+From (
+    Select Email,Count(Email) as cnt
+    From Person
+    Group By Email) AS A
+Where cnt > 1
 """
 
 # 1075
@@ -1009,6 +1051,14 @@ ON c.seat_id - 1 = c3.seat_id
 WHERE (c.free = 1 AND c2.free = 1) OR (c.free = 1 AND c3.free = 1)
 """
 
+# 603 Echo
+"""
+SELECT DISTINCT A.seat_id
+FROM cinema A, cinema B
+WHERE (A.seat_id +1 = B.seat_id and A.free * B.free =1) 
+or (A.seat_id -1 = B.seat_id and A.free * B.free =1 )
+"""
+
 # 577
 """
 SELECT e.name, b.bonus
@@ -1020,9 +1070,16 @@ WHERE IFNULL(b.bonus,0) < 1000
 
 # 610
 """
-SELECT t.x, t.y, t.z, 
+SELECT t.x, t.y, t.z,  
        CASE WHEN (t.x + t.y > t.z) AND (t.x + t.z > t.y) AND (t.y + t.z > t.x) THEN "Yes" ELSE "No" END AS "triangle"
 FROM triangle t
+"""
+
+# 610 Echo, answer from https://leetcode.com/gdianov/ 
+"""
+select *, 
+    IF(x + y > z AND x + z > y AND y + z > x, 'Yes', 'No') as triangle 
+    from triangle;
 """
 
 # 620
@@ -1063,6 +1120,17 @@ HAVING COUNT(*) = (SELECT COUNT(*) AS "count_num"
                    GROUP BY o2.customer_number
                    ORDER BY count_num DESC
                    LIMIT 1)
+"""
+
+# 586 Echo
+"""
+SELECT customer_number 
+FROM   (SELECT customer_number, 
+               Count(order_number) AS cnt 
+        FROM   orders 
+        GROUP  BY customer_number) AS A 
+ORDER  BY cnt DESC 
+LIMIT  1 
 """
 
 # 584
@@ -1129,6 +1197,23 @@ SELECT MIN(p2.x - p.x) AS "shortest"
 FROM point p
 LEFT JOIN point p2
 ON p.x < p2.x
+"""
+
+# 613 Echo
+"""
+SELECT min(distance) AS 'shortest'
+FROM point A
+LEFT JOIN (SELECT B.x, MIN(ABS( B.x-C.x )) as distance
+           FROM point B, point C
+           WHERE B.x <> C.x) AS D
+ON A.x = D.x
+
+*/ Method 2
+SELECT min(abs(A.x-B.x)) AS 'shortest'
+FROM point A, point B
+WHERE A.x <> B.x   
+*/
+
 """
 
 # 595
