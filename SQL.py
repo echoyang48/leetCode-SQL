@@ -274,7 +274,7 @@ ON f.follower = f3.followee
 ORDER BY f.follower
 """
 
-# 117
+# 177
 """
 CREATE FUNCTION getNthHighestSalary(N INT) RETURNS INT
 BEGIN
@@ -871,6 +871,14 @@ FROM Queries q
 GROUP BY q.query_name
 """
 
+# 1211 Echo
+"""
+SELECT query_name,ROUND(AVG(rating/position),2) AS quality, 
+ROUND(SUM(IF(rating<3,1,0))/COUNT(*)*100,2) AS poor_query_percentage 
+FROM Queries
+GROUP BY query_name
+"""
+
 # 1083
 """
 SELECT s.buyer_id
@@ -899,6 +907,19 @@ AND s2.buyer_id IN (
     LEFT JOIN Product p2
     ON s3.product_id = p2.product_id
     WHERE p2.product_name = 'S8')
+"""
+
+# 1083 Echo
+"""
+SELECT DISTINCT buyer_id
+FROM Sales S
+LEFT JOIN Product P
+On S.product_id = P.product_id
+WHERE P.product_name = 'S8'
+and buyer_id Not in (SELECT buyer_id FROM Sales S1
+                    LEFT JOIN Product P1
+                    ON S1.product_id = P1.product_id
+                    WHERE P1.product_name='iPhone') 
 """
 
 # 181
@@ -931,6 +952,16 @@ WHERE s.product_id IN (SELECT s2.product_id
                       FROM Sales s3
                       WHERE s3.sale_date NOT BETWEEN '2019-01-01' AND '2019-03-31')
 """
+# 1084 Echo
+"""
+SELECT Sales.product_id, Product.product_name
+FROM Sales
+LEFT JOIN Product
+ON Sales.product_id = Product.product_id
+GROUP BY Sales.product_id
+HAVING min(sale_date) >= '2019-01-01' and max(sale_date) <= '2019-03-31'
+"""
+
 
 # 1076
 # use having to select rows with max values [return multi-rows]
@@ -944,6 +975,18 @@ HAVING COUNT(DISTINCT employee_id) = (
         SELECT p2.project_id, COUNT(DISTINCT p2.employee_id) AS "num_count"
         FROM Project p2
         GROUP BY p2.project_id) count_table)
+"""
+
+# 1076 Echo
+"""
+SELECT B.project_id
+FROM Project B
+GROUP BY B.project_id
+HAVING COUNT(B.employee_id) = (SELECT COUNT(employee_id)  as cnt
+                            FROM Project  
+                            GROUP BY project_id
+                            ORDER BY cnt DESC
+                            LIMIT 1)
 """
 
 # 1141
@@ -1167,6 +1210,12 @@ HAVING SUM(s.price) = (
 UPDATE salary
 SET sex = CASE WHEN salary.sex = 'm' THEN 'f'
                ELSE 'm' END
+"""
+
+# 627 Echo
+"""
+UPDATE salary
+SET SEX = IF(sex='m','f','m')
 """
 
 # 1050
