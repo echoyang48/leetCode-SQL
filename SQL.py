@@ -432,6 +432,19 @@ JOIN (SELECT a3.player_id, MIN(a3.event_date) AS "start_date"
       ) start_date_table
 ON a.event_date = start_date_table.start_date AND a.player_id = start_date_table.player_id
 """
+# 550 Echo
+"""
+SELECT ROUND(
+    (SELECT COUNT(DISTINCT A1.player_id) 
+    FROM Activity A1
+    WHERE (A1.player_id,A1.event_date) 
+    in (SELECT A2.player_id, adddate(min(A2.event_date),interval 1 day) 
+        FROM Activity A2
+        GROUP BY A2.player_id))
+    /
+    (SELECT COUNT(DISTINCT A3.player_id) FROM Activity A3)
+    ,2) AS 'fraction'
+"""
 
 # 580
 """
@@ -503,6 +516,23 @@ FROM (
     FROM  insurance i ) condition_table
 WHERE condition_table.first_req !=0 AND condition_table.second_req = 0
 """
+
+# 585 Echo
+"""
+SELECT ROUND(SUM(TIV_2016),2) AS 'TIV_2016'
+FROM insurance
+WHERE TIV_2015 in (SELECT DISTINCT TIV_2015
+                  FROM insurance
+                  GROUP BY TIV_2015
+                  HAVING COUNT(*)>1)
+AND (LAT,LON) in (SELECT DISTINCT LAT,LON
+               FROM insurance
+               GROUP BY LAT,LON
+               HAVING COUNT(*)=1)
+
+"""
+
+
 # 1205
 """
 SELECT union_table.month, union_table.country, 
@@ -567,6 +597,13 @@ ORDER BY shortest ASC
 LIMIT 1
 """
 
+# 612 Echo
+"""
+SELECT ROUND(MIN(SQRT(pow(p1.x-p2.x,2)+pow(p1.y-p2.y,2))),2) AS 'shortest'
+FROM point_2d p1, point_2d p2
+WHERE not (p1.x = p2.x and p1.y = p2.y)
+"""
+
 # 626
 """
 SELECT s.id, IFNULL(CASE WHEN MOD(s.id,2) = 1 THEN s2.student
@@ -576,6 +613,16 @@ FROM seat s
 LEFT JOIN seat s2 on s.id + 1 = s2.id 
 LEFT JOIN seat s3 on s.id - 1 = s3.id
 ORDER BY s.id ASC
+"""
+
+# 626 Echo
+"""
+SELECT S1.id,
+IFNULL((CASE
+ WHEN S1.id%2=1 THEN (SELECT student FROM seat S2 WHERE S2.id=S1.id+1)
+ WHEN S1.id%2=0 THEN (SELECT student FROM seat S3 WHERE S3.id=S1.id-1)
+ END),S1.student) AS 'student'
+FROM seat S1
 """
 
 # 1193
@@ -657,6 +704,20 @@ LEFT JOIN (
 ON t2.id = parent_table.p_id
 """
 
+# 608 Echo
+"""
+SELECT DISTINCT id,
+(CASE WHEN p_id is null THEN 'Root'
+ WHEN p_id is not null and c_id is not null THEN 'Inner'
+ ELSE 'Leaf'
+ END) AS 'Type'
+FROM (
+    SELECT t1.id,t1.p_id,t2.p_id AS 'c_id'
+    FROM tree t1
+    LEFT JOIN tree t2
+    ON t1.id = t2.p_id) AS A
+"""
+
 # 1112
 """
 SELECT e2.student_id, MIN(e2.course_id) AS "course_id", e2.grade
@@ -678,6 +739,15 @@ JOIN (
     HAVING num_reporters >= 5) reporters_table
 ON e2.Id = reporters_table.ManagerId
 """
+# 570 Echo
+"""
+SELECT E2.Name 
+FROM Employee E1
+JOIN Employee E2
+ON E1.ManagerId = E2.Id
+GROUP BY E2.Id
+HAVING COUNT(*)>=5 
+"""
 
 # 534
 """
@@ -694,6 +764,15 @@ SELECT a.player_id, a.event_date, SUM(a2.games_played) AS "games_played_so_far"
 FROM Activity a, Activity a2
 WHERE a.player_id = a2.player_id AND a.event_date >= a2.event_date
 GROUP BY a.player_id, a.event_date
+"""
+
+# 534 Echo
+"""
+SELECT A1.player_id, A1.event_date, SUM(A2.games_played) AS 'games_played_so_far'
+FROM Activity A1
+LEFT JOIN Activity A2
+ON A1.player_id = A2.player_id and A1.event_date >= A2.event_date
+GROUP BY A1.player_id, A1.event_date
 """
 
 # 1204
@@ -720,6 +799,16 @@ FROM (
 WHERE join_table.num_product = (SELECT COUNT(DISTINCT p2.product_key)
                                 FROM Product p2)
 ORDER BY join_table.customer_id ASC
+"""
+
+# 1045 Echo
+"""
+SELECT customer_id
+FROM (SELECT *
+      FROM Customer
+      WHERE product_key in (SELECT * FROM Product)) AS A
+GROUP BY customer_id
+HAVING COUNT(DISTINCT product_key) = (SELECT COUNT(product_key) FROM Product)
 """
 
 # 1126
