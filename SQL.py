@@ -341,6 +341,20 @@ FROM (
     GROUP BY a.action_date ) clean
 """
 
+# 1132 Echo
+"""
+SELECT ROUND(100*AVG(Ratio),2) AS 'average_daily_percent'
+FROM 
+    (SELECT A.action_date, COUNT(R.remove_date)/COUNT(*) AS Ratio
+    FROM
+    (SElECT DISTINCT post_id,action_date
+    FROM Actions 
+    WHERE action='report' and extra='spam') AS A
+    LEFT JOIN Removals R
+    ON A.post_id = R.post_id
+    GROUP BY A.action_date) AS B
+"""
+
 # 180
 """
 SELECT DISTINCT l.Num AS "ConsecutiveNums"
@@ -405,6 +419,19 @@ LEFT JOIN (
 ON b2.book_id = sold.book_id
 WHERE b2.available_from < DATE_SUB('2019-06-23', INTERVAL 1 MONTH)
 AND IFNULL(sold.num_sold, 0) < 10
+"""
+
+#1098 Echo
+"""
+SELECT book_id,name 
+FROM Books
+WHERE available_from < subdate('2019-06-23',interval 1 month)
+and book_id not in 
+    (SELECT book_id
+    FROM Orders
+    WHERE dispatch_date between subdate('2019-06-23',interval 1 year) and '2019-06-23'
+    GROUP BY book_id
+    HAVING SUM(quantity) >= 10)
 """
 
 # 1107
@@ -554,6 +581,25 @@ GROUP BY union_table.month, union_table.country
 HAVING approved_count + approved_amount + chargeback_count + chargeback_amount > 0
 """
 
+# 1205 Echo 
+# Similar to David's answer
+"""
+SELECT date_format(TT.trans_date,'%Y-%m') AS 'month',
+	country,SUM(state='approved') AS 'approved_count',
+	SUM(IF(state='approved',amount,0)) AS 'approved_amount',
+	SUM(state='charged') AS 'chargeback_count',
+	SUM(IF(state='charged',amount,0)) AS 'chargeback_amount'
+FROM
+	(SELECT * FROM Transactions
+	UNION ALL
+	(SELECT trans_id,country,'charged' AS 'state',amount,C.trans_date
+ 	FROM Chargebacks C
+ 	LEFT JOIN Transactions T
+ 	ON C.trans_id = T.id)) AS TT #total
+GROUP BY date_format(TT.trans_date,'%Y-%m'),TT.country
+HAVING SUM(state='approved')>0 or SUM(state='charged')>0
+"""
+
 # 1158
 """
 SELECT u.user_id AS "buyer_id", u.join_date, IFNULL(clean_orders.orders_in_2019, 0) AS "orders_in_2019"
@@ -585,6 +631,18 @@ WHERE (d.customer_id, d.order_date) IN (SELECT d2.customer_id, MIN(d2.order_date
 									    FROM delivery d2
 									    GROUP BY d2.customer_id)
 """
+
+#1174 Echo
+"""
+SELECT ROUND(100*SUM(D.order_date=D.customer_pref_delivery_date)/COUNT(*),2) 
+AS 'immediate_percentage'
+FROM Delivery D
+WHERE (customer_id,order_date) in 
+    (SElECT customer_id,min(order_date)
+    FROM Delivery
+    GROUP BY customer_id)
+"""
+
 
 # 612
 # no aggregate function allowed during features created by select
@@ -674,6 +732,39 @@ LEFT JOIN (
     ) price_table
 ON p3.product_id = price_table.product_id
 ORDER BY price DESC
+"""
+
+# 1164 Echo
+"""
+SELECT P.product_id,IFNULL(A.price,10) AS 'price'
+FROM (SELECT DISTINCT product_id FROM Products) AS P
+LEFT JOIN 
+    (SELECT product_id,new_price AS 'price'
+        FROM Products P
+        WHERE (product_id,change_date) IN
+            (SELECT product_id,MAX(change_date) 
+            FROM Products
+            WHERE change_date <= '2019-08-16'
+            GROUP BY product_id)) AS A
+ON P.product_id=A.product_id
+"""
+
+# OR
+"""
+SELECT product_id,new_price AS 'price'
+FROM Products P
+WHERE (product_id,change_date) IN
+    (SELECT product_id,MAX(change_date) 
+    FROM Products
+    WHERE change_date <= '2019-08-16'
+    GROUP BY product_id)
+UNION 
+SELECT product_id,10 
+FROM (SELECT DISTINCT product_id FROM Products) AS A
+WHERE product_id not in 
+    (SELECT product_id
+    FROM Products
+    WHERE change_date <= '2019-08-16')
 """
 
 # 608
@@ -786,6 +877,21 @@ WHERE cum_table.cum_weight <= 1000
 ORDER BY cum_table.cum_weight DESC
 LIMIT 1
 """
+# 1204 Echo
+"""
+SELECT D.person_name
+FROM
+    (SELECT A.turn, SUM(B.weight) AS cum_weight
+    FROM Queue A
+    LEFT JOIN Queue B
+    ON A.turn >= B.turn
+    GROUP BY A.turn) AS C
+LEFT JOIN Queue D
+ON C.turn = D.turn
+WHERE cum_weight <= 1000
+ORDER BY cum_weight DESC
+LIMIT 1
+"""
 
 # 1045
 """
@@ -825,6 +931,33 @@ FROM (
     WHERE e2.occurences> sum_table.avg_ocur
     GROUP BY e2.business_id) agg
 WHERE agg.count_above_avg > 1
+"""
+
+# 1126 Echo
+"""
+SELECT business_id
+FROM
+    (SELECT business_id,IF(E.occurences>A.avg_o,1,0) AS 'beat_avg'
+    FROM Events E
+    LEFT JOIN  
+        (SELECT event_type, AVG(occurences) AS 'avg_o'
+        FROM Events
+        GROUP BY event_type) AS A
+    On E.event_type = A.event_type) AS B
+GROUP BY business_id
+HAVING SUM(beat_avg) > 1 
+"""
+# OR
+"""
+SELECT business_id
+FROM Events E
+LEFT JOIN  
+    (SELECT event_type, AVG(occurences) AS 'avg_o'
+    FROM Events
+    GROUP BY event_type) AS A
+On E.event_type = A.event_type
+GROUP BY E.business_id
+HAVING SUM(IF(E.occurences> A.avg_o,1,0)) >1
 """
 
 # 1077
