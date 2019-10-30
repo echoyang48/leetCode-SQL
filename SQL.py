@@ -43,6 +43,22 @@ ORDER BY e.Id ASC, e.Month DESC
 ;
 """
 
+# 579 Echo
+# Putting the and conditions in 'ON Clause' will be much slower
+"""
+SELECT E.Id AS 'id', E.Month AS 'month', SUM(IFNULL(E1.Salary,0)) AS 'Salary'
+FROM Employee E
+lEFT JOIN Employee E1
+ON E.Id = E1.Id and E1.Month+2 >= E.Month and E.Month >= E1.Month
+WHERE (E.Id, E.Month) NOT IN
+    (SELECT Id, MAX(Month) AS 'last_month'
+    FROM Employee
+    GROUP BY Id) 
+GROUP BY E.Id, E.Month
+ORDER BY E.Id ASC, E.Month DESC
+"""
+
+
 # 601
 """
 SELECT s1.id, s1.visit_date, s1.people
@@ -60,6 +76,42 @@ WHERE (SELECT COUNT(*)
        WHERE s1.id < s4.id + 3 AND s1.id > s4.id - 1 AND s4.people>=100) = 3 
 """
 
+# 601 Echo
+"""
+SELECT S.id,S.visit_date,S.people
+FROM stadium S
+LEFT JOIN (SELECT id,visit_date,people,IF(people>=100,1,0) AS 'check'
+FROM stadium) AS A
+ON S.id+2 = A.id
+LEFT JOIN (SELECT id,visit_date,people,IF(people>=100,1,0) AS 'check'
+FROM stadium) AS B
+ON S.id+1 = B.id
+lEFT JOIN (SELECT id,visit_date,people,IF(people>=100,1,0) AS 'check'
+FROM stadium) AS C
+ON S.id-1 = C.id
+LEFT JOIN (SELECT id,visit_date,people,IF(people>=100,1,0) AS 'check'
+FROM stadium) AS D
+ON S.id-2 = D.id
+WHERE ((S.people>=100) and A.check=1 and B.check=1)
+      OR ((S.people>=100) and B.check=1 and C.check=1)
+      OR ((S.people>=100) and C.check=1 and D.check=1)
+ORDER BY id
+"""
+
+# 601 Answer from wangyihuan24 https://leetcode.com/wanyihuang24/
+"""
+SELECT DISTINCT S1.*
+FROM stadium S1
+JOIN stadium S2
+JOIN stadium S3
+ON ((S1.id = S2.id - 1 AND S1.id = S3.id -2)
+OR (S3.id = S1.id - 1 AND S3.id = S2.id -2)
+OR (S3.id = S2.id - 1 AND S3.id = S1.id -2))
+WHERE S1.people >= 100
+AND S2.people >= 100
+AND S3.people >= 100
+ORDER BY S1.id;
+"""
 
 # 615
 """
@@ -78,6 +130,24 @@ FROM (
     FROM salary s
     JOIN employee e on s.employee_id = e.employee_id 
     GROUP BY e.department_id, DATE_FORMAT(s.pay_date,'%Y-%m') ) t1
+"""
+
+# 615 Echo
+"""
+SELECT date_format(S.pay_date,'%Y-%m') AS 'pay_month',
+       E.department_id,
+      ( CASE WHEN ROUND(AVG(S.amount),2)> A.avg THEN 'higher'
+             WHEN ROUND(AVG(S.amount),2)= A.avg THEN 'same'
+             ELSE 'lower' END) AS 'comparison'
+FROM salary S
+lEFT JOIN (SELECT date_format(pay_date,'%Y-%m') AS 'month',
+           ROUND(AVG(amount),2) AS 'avg' 
+           FROM Salary
+           GROUP BY date_format(pay_date,'%Y-%m')) AS A
+ON date_format(S.pay_date,'%Y-%m') = A.month
+LEFT JOIN employee E
+ON S.employee_id = E.employee_id
+GROUP BY date_format(S.pay_date,'%Y-%m'), E.department_id
 """
 
 
