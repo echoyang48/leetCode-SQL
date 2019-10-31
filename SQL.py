@@ -251,6 +251,33 @@ ON a3.player_id = a.player_id AND a3.event_date = DATE_ADD(a.event_date, INTERVA
 GROUP BY a.event_date
 """
 
+# 1097 Echo
+"""
+SELECT Install.install_dt, Install.installs, 
+       ROUND(IFNULL(Re.retention/Install.installs,0),2) As 'Day1_retention'
+FROM 
+    (SELECT  install_dt, COUNT(*) AS 'installs'
+    FROM Activity A
+    LEFT JOIN 
+        (SELECT player_id,min(event_date) AS 'install_dt'
+        FROM Activity
+        GROUP BY player_id) AS install_table
+    ON A.player_id = install_table.player_id 
+    WHERE A.event_date = install_table.install_dt
+    GROUP BY install_dt) AS Install    
+LEFT JOIN
+    (SELECT install_dt,
+           COUNT(*) AS 'retention'
+    FROM Activity A2
+    LEFT JOIN (SELECT player_id,min(event_date) AS 'install_dt'
+        FROM Activity
+        GROUP BY player_id) AS install_table
+    ON A2.player_id = install_table.player_id 
+    WHERE A2.event_date = adddate(install_dt,interval 1 day)
+    GROUP BY install_dt) AS Re
+ON Re.install_dt = Install.install_dt
+"""
+
 # 569
 """
 SELECT clean.Id, clean.Company , clean.Salary
