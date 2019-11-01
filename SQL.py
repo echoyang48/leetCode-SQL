@@ -247,6 +247,20 @@ ORDER BY agg2.Clean_median
 LIMIT 1
 """
 
+# 571 Echo
+"""
+SELECT AVG(Number) 'median'
+FROM
+    (SELECT Number, Frequency, @cum:=@cum+Frequency AS 'cum'
+    FROM Numbers, (SELECT @cum:=0) tmp
+    ORDER BY Number) AS N_cum
+WHERE 
+    ((SELECT ROUND(SUM(Frequency)/2,0) FROM Numbers) 
+        between cum-Frequency+1 and cum)
+    OR ((SELECT ROUND(SUM(Frequency)/2+0.5,0) FROM Numbers)
+        between cum-Frequency+1 and cum)
+"""
+
 # 1159
 """
 SELECT DISTINCT u2.user_id AS "seller_id", agg.2nd_item_fav_brand
@@ -342,6 +356,35 @@ FROM (
     FROM Employee e ) clean
 WHERE ABS(clean.small - clean.large) <= 1 
 ORDER BY clean.Company, clean.Salary
+"""
+
+# 569 Echo beats 99%
+"""
+SELECT Id, Company, Salary
+FROM
+    (SELECT Id, Company, Salary,
+           (CASE WHEN @prev = Company THEN @rank:= @rank+1 ELSE @rank:=1 END) Rank,
+           @prev:= Company patition_key
+    FROM Employee
+    JOIN (SELECT @rank:=0, @prev:=0) tmp
+    ORDER BY Company, Salary) AS Rank_table
+WHERE (Company,Rank) in 
+    (SELECT * FROM
+        ((SELECT Company,(COUNT(ID)+1)/2 AS 'Rank'
+         FROM Employee
+         GROUP BY Company
+         HAVING COUNT(Id)%2=1)
+        UNION
+        (SELECT Company,COUNT(ID)/2 AS 'Rank'
+         FROM Employee
+         GROUP BY Company
+         HAVING COUNT(Id)%2=0)
+        UNION
+        (SELECT Company,COUNT(ID)/2+1 AS 'Rank'
+         FROM Employee
+         GROUP BY Company
+         HAVING COUNT(Id)%2=0)) AS A)
+ORDER BY Company, Salary
 """
 
 # below is faster
