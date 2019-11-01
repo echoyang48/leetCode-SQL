@@ -1727,3 +1727,23 @@ JOIN (SELECT DISTINCT *
       FROM Sales) s
 ON p.product_id = s.product_id
 """
+
+# 1225 Echo
+"""
+(SELECT 'succeeded' AS 'period_state', Min(success_date) AS 'start_date',
+        Max(success_date) AS 'end_date'
+FROM
+    (SELECT S1.success_date, (@row_number1:=@row_number1+1) AS 'row1'
+    FROM Succeeded S1, (SELECT @row_number1:=0) a
+    WHERE success_date between '2019-01-01' and '2019-12-31') AS S2
+GROUP BY SUBDATE(success_date,interval row1 day))
+UNION
+(SELECT 'failed' AS 'period_state', Min(fail_date) AS 'fail_date',
+        Max(fail_date) AS 'end_date'
+FROM
+    (SELECT F1.fail_date, (@row_number2:=@row_number2+1) AS 'row2'
+    FROM Failed F1,(SELECT @row_number2:=0) a
+    WHERE fail_date between '2019-01-01' and '2019-12-31') AS F2
+GROUP BY SUBDATE(fail_date,interval row2 day))
+ORDER BY start_date
+"""
