@@ -201,6 +201,35 @@ ORDER BY CASE sp3.platform WHEN "desktop" THEN 0
                            END
 """
 
+# 1127 Echo
+"""
+SELECT D.spend_date,D.platform,IFNULL(S2.total_amount,0) AS 'total_amount',
+       IFNULL(S2.total_users,0) AS 'total_users'
+FROM
+(SELECT * FROM
+    (SELECT DISTINCT spend_date FROM Spending) AS A
+    JOIN 
+    (SELECT 'desktop' AS 'platform'
+    UNION
+    SELECT 'mobile' AS 'platform'
+    UNION 
+    SELECT 'both' AS 'platform') AS P
+    ON 1) AS D
+lEFT JOIN 
+(SELECT S1.spend_date,S1.platform,
+       SUM(S1.t_amount) AS 'total_amount',
+       COUNT(S1.user_id) AS 'total_users'
+FROM 
+       (SELECT S.user_id, S.spend_date,
+               SUM(S.amount) AS 't_amount',
+               (CASE WHEN COUNT(S.platform)=2 THEN 'both'
+                ELSE S.platform END) AS 'platform'
+        FROM Spending S
+        GROUP BY user_id, spend_date) AS S1
+GROUP BY S1.spend_date, S1.platform) AS S2
+ON D.platform = S2.platform and D.spend_date = S2.spend_date
+"""
+
 # 571
 """
 SELECT agg2.Clean_median AS "median"
@@ -235,6 +264,23 @@ LEFT JOIN (
     ) agg
 ON u2.user_id = agg.seller_id
 ORDER BY u2.user_id
+"""
+ 
+# 1159 faster if getting rank first. answer from ying61 https://leetcode.com/ying61/
+"""
+select u.user_id seller_id, case when u.favorite_brand = i.item_brand then "yes" else "no" end 2nd_item_fav_brand
+from Users u 
+left outer join
+(select seller_id, order_date, item_id,
+       # assume Orders table is in chronological order
+       case when @prev = seller_id then @rank := @rank + 1 else @rank := 1 end Rank,
+       @prev := seller_id partition_key
+FROM Orders
+join (select @rank := 0, @prev := 0) tmp
+order by seller_id, order_date asc) rt
+on u.user_id = rt.seller_id and rt.Rank = 2
+left outer join Items i
+on rt.item_id = i.item_id
 """
 
 # 1097
@@ -358,6 +404,22 @@ WHERE clean2.player_id = (SELECT MIN(clean3.player_id)
                                 GROUP BY p.player_id, p.group_id) clean3
                          WHERE clean3.total_score = group_max.max_score AND clean3.group_id = clean2.group_id)
 ORDER BY group_max.group_id
+"""
+
+# 1194 Echo
+"""
+SELECT group_id,player_id
+FROM
+    (SELECT P.group_id, P.player_id, SUM(first_score) AS 'total_score'
+    FROM 
+        (SELECT first_player, first_score FROM Matches
+        UNION ALL
+        SELECT second_player,second_score FROM Matches) AS M
+    LEFT JOIN Players P
+    ON P.player_id = M.first_player
+    GROUP BY P.player_id
+    ORDER BY group_id, total_score DESC, player_id) final
+Group BY group_id
 """
 
 # 614
